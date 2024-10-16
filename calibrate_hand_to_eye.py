@@ -70,41 +70,26 @@ class CameraCalibration:
             return R_target2cam, tvec
 
 
-class TF2Echo(Node):
+class GripperToBaseTransform(Node):
     def __init__(self):
-        super().__init__('tf2_echo_node')
+        super().__init__('gripper_to_base_transform')
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.base_frame = 'link_0'
-        self.gripper_frame = 'link_ee'
-        # self.timer = self.create_timer(1.0, self.timer_callback)
-
-    # def timer_callback(self):
-    #     self.get_transform()
-
+        self.base_frame = 'link_0'  # The base frame of robot
+        self.gripper_frame = 'link_ee'  # The gripper/end-effector frame
+        
     def get_transform(self):
-        try:
-            # Lookup the transform from source_frame to target_frame
-            transform: TransformStamped = self.tf_buffer.lookup_transform(
-                self.base_frame, self.gripper_frame, rclpy.time.Time())
-            
-            # Print the transformation information
-            self.get_logger().info(f'Transform from {self.base_frame} to {self.gripper_frame}:')
-            self.get_logger().info(f'  Translation: x={transform.transform.translation.x}, '
-                                   f'y={transform.transform.translation.y}, '
-                                   f'z={transform.transform.translation.z}')
-            self.get_logger().info(f'  Rotation: x={transform.transform.rotation.x}, '
-                                   f'y={transform.transform.rotation.y}, '
-                                   f'z={transform.transform.rotation.z}, '
-                                   f'w={transform.transform.rotation.w}')
-        except Exception as e:
-            self.get_logger().error(f'Could not get transform: {str(e)}')
+        now = rclpy.time.Time()
+        transform = self.tf_buffer.lookup_transform(self.base_frame, self.gripper_frame, now)
+        t_gripper2base = transform.transform.translation
+        R_gripper2base = transform.transform.rotation
+        return t_gripper2base, R_gripper2base
 
-
+# 	cv.calibrateHandEye(R_gripper2base, t_gripper2base, R_target2cam, t_target2cam[, R_cam2gripper[, t_cam2gripper[, method]]])
 class CalibrateHandEye(Node):
     def __init__(self, k4a, image_path):
         super().__init__('calibrate_hand_eye')
-        self.tf2_echo = TF2Echo()
+        self.gripper_to_base_transform = GripperToBaseTransform()
         self.k4a = k4a
         self.calibration = self.k4a.calibration
         self.camera_matrix = CameraCalibration.get_color_camera_matrix(self.calibration)
@@ -115,43 +100,29 @@ class CalibrateHandEye(Node):
             self.dist_coeffs, 
             0.2159
         )
-        self.R_gripper2base, self.t_gripper2base = self.tf2_echo.get_transform()
+        self.R_gripper2base, self.t_gripper2base = self.gripper_to_base_transform.get_transform()
         self.R_target2cam, self.t_target2cam = self.target_camera_transform
 
-    def calibrate_hand_eye(self):
-        if self.R_gripper2base is None or self.t_gripper2base is None:
-            self.get_logger().error('Failed to get gripper to base transform')
-            return None, None
 
-        R_cam2gripper, t_cam2gripper = cv2.calibrateHandEye(
-            self.R_gripper2base, self.t_gripper2base, 
-            self.R_target2cam, self.t_target2cam
-        )
+    def calibrate_hand_eye(self):
+        R_cam2gripper, t_cam2gripper = cv2.calibrateHandEye(self.R_gripper2base, self.t_gripper2base, self.R_target2cam, self.t_target2cam)
+        print(R_cam2gripper)
+        print(t_cam2gripper)
         return R_cam2gripper, t_cam2gripper
 
 
 def main():
-    rclpy.init()
-
     # Initialize and start the K4A camera
     k4a = PyK4A()
     k4a.start()
-    tf2_echo = TF2Echo()
-    rclpy.spin(tf2_echo)
-    tf2_echo.destroy_node()
 
+    rclpy.init()
+    
     # Create CalibrateHandEye node
     calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png')
     R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
-
-    if R_cam2gripper is not None and t_cam2gripper is not None:
-        print("Camera to Gripper Rotation:")
-        print(R_cam2gripper)
-        print("Camera to Gripper Translation:")
-        print(t_cam2gripper)
-    else:
-        print("Calibration failed")
-
+    print(R_cam2gripper, t_cam2gripper)
+    
     k4a.stop()
     rclpy.shutdown()
 
