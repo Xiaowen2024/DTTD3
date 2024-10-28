@@ -122,7 +122,7 @@ class TF2Echo(Node):
 
 
 class CalibrateHandEye(Node):
-    def __init__(self, k4a, image_path):
+    def __init__(self, k4a, image_path, R_gripper2base, t_gripper2base):
         super().__init__('calibrate_hand_eye')
         self.tf2_echo = TF2Echo()
         self.k4a = k4a
@@ -131,7 +131,7 @@ class CalibrateHandEye(Node):
         print(f"camera_matrix: {self.camera_matrix}")
         self.dist_coeffs = CameraCalibration.get_color_dist_coefficients(self.calibration)
         print(f"dist_coeffs: {self.dist_coeffs}")
-        self.R_gripper2base, self.t_gripper2base = self.tf2_echo.get_transform()
+        self.R_gripper2base, self.t_gripper2base = R_gripper2base, t_gripper2base
         print(f"R_gripper2base: {self.R_gripper2base}")
         print(f"t_gripper2base: {self.t_gripper2base}")
         self.R_target2cam, self.t_target2cam = CameraCalibration.get_target_camera_transform(
@@ -172,8 +172,8 @@ def main():
         time.sleep(0.1) 
 
     # Create CalibrateHandEye node only if we got the transform
-    if rotation is not None or translation is not None:
-        calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png')
+    if rotation is not None and translation is not None:
+        calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png', rotation, translation)
         R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
 
         if R_cam2gripper is not None and t_cam2gripper is not None:
