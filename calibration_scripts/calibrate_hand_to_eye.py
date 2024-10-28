@@ -6,6 +6,7 @@ from geometry_msgs.msg import TransformStamped
 from pyk4a import PyK4A, Config
 import cv2
 import matplotlib.pyplot as plt
+import time
 
 
 class CameraCalibration:
@@ -58,16 +59,11 @@ class CameraCalibration:
 
             #Estimate pose of each marker
             rvecs, tvecs = CameraCalibration.estimate_pose_single_markers(corners, camera_matrix, dist_coeffs, marker_length)
-
-            # Get rotation and translation vectors
-            rvec = rvecs[0]  # This should now be a 3x1 array
+            rvec = rvecs[0] 
             tvec = tvecs[0]
-
-            # Convert rotation vector to rotation matrix
-            print(rvec.shape)
-            print(tvec.shape)
             R_target2cam, _ = cv2.Rodrigues(rvec)
             return R_target2cam, tvec
+
 
 
 class TF2Echo(Node):
@@ -75,30 +71,54 @@ class TF2Echo(Node):
         super().__init__('tf2_echo_node')
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.base_frame = 'link_0'
-        self.gripper_frame = 'link_ee'
-        # self.timer = self.create_timer(1.0, self.timer_callback)
+        self.target_frame = 'link_0'
+        self.source_frame = 'world'
+        self.timer = self.create_timer(1.0, self.timer_callback)
+        self.transform = None
 
-    # def timer_callback(self):
-    #     self.get_transform()
+    def timer_callback(self):
+        self.transform = self.get_transform()
 
     def get_transform(self):
         try:
-            # Lookup the transform from source_frame to target_frame
             transform: TransformStamped = self.tf_buffer.lookup_transform(
-                self.base_frame, self.gripper_frame, rclpy.time.Time())
-            
-            # Print the transformation information
-            self.get_logger().info(f'Transform from {self.base_frame} to {self.gripper_frame}:')
-            self.get_logger().info(f'  Translation: x={transform.transform.translation.x}, '
-                                   f'y={transform.transform.translation.y}, '
-                                   f'z={transform.transform.translation.z}')
-            self.get_logger().info(f'  Rotation: x={transform.transform.rotation.x}, '
-                                   f'y={transform.transform.rotation.y}, '
-                                   f'z={transform.transform.rotation.z}, '
-                                   f'w={transform.transform.rotation.w}')
+                self.target_frame, self.source_frame, rclpy.time.Time())
+            translation = np.array([
+                transform.transform.translation.x,
+                transform.transform.translation.y,
+                transform.transform.translation.z
+            ])
+            rotation = self.quaternion_to_rotation_matrix(
+                transform.transform.rotation.x,
+                transform.transform.rotation.y,
+                transform.transform.rotation.z,
+                transform.transform.rotation.w
+            )
+            return rotation, translation
         except Exception as e:
             self.get_logger().error(f'Could not get transform: {str(e)}')
+        return None, None
+    
+
+    def quaternion_to_rotation_matrix(self, x, y, z, w):
+        """
+        Convert a quaternion (x, y, z, w) to a rotation matrix (3x3).
+        """
+        R = np.zeros((3, 3))
+        R[0, 0] = 1 - 2 * (y * y + z * z)
+        R[0, 1] = 2 * (x * y - z * w)
+        R[0, 2] = 2 * (x * z + y * w)
+        R[1, 0] = 2 * (x * y + z * w)
+        R[1, 1] = 1 - 2 * (x * x + z * z)
+        R[1, 2] = 2 * (y * z - x * w)
+        R[2, 0] = 2 * (x * z - y * w)
+        R[2, 1] = 2 * (y * z + x * w)
+        R[2, 2] = 1 - 2 * (x * x + y * y)
+        
+        return R
+
+        
+            
 
 
 class CalibrateHandEye(Node):
@@ -108,15 +128,20 @@ class CalibrateHandEye(Node):
         self.k4a = k4a
         self.calibration = self.k4a.calibration
         self.camera_matrix = CameraCalibration.get_color_camera_matrix(self.calibration)
+        print(f"camera_matrix: {self.camera_matrix}")
         self.dist_coeffs = CameraCalibration.get_color_dist_coefficients(self.calibration)
-        self.target_camera_transform = CameraCalibration.get_target_camera_transform(
+        print(f"dist_coeffs: {self.dist_coeffs}")
+        self.R_gripper2base, self.t_gripper2base = self.tf2_echo.get_transform()
+        print(f"R_gripper2base: {self.R_gripper2base}")
+        print(f"t_gripper2base: {self.t_gripper2base}")
+        self.R_target2cam, self.t_target2cam = CameraCalibration.get_target_camera_transform(
             image_path, 
             self.camera_matrix, 
             self.dist_coeffs, 
             0.2159
         )
-        self.R_gripper2base, self.t_gripper2base = self.tf2_echo.get_transform()
-        self.R_target2cam, self.t_target2cam = self.target_camera_transform
+        print(f"R_target2cam: {self.R_target2cam}")
+        print(f"t_target2cam: {self.t_target2cam}")
 
     def calibrate_hand_eye(self):
         if self.R_gripper2base is None or self.t_gripper2base is None:
@@ -136,22 +161,32 @@ def main():
     # Initialize and start the K4A camera
     k4a = PyK4A()
     k4a.start()
+    
+    # Create and spin TF2Echo node for a few seconds to get transforms
     tf2_echo = TF2Echo()
-    rclpy.spin(tf2_echo)
-    tf2_echo.destroy_node()
+    rclpy.spin_once(tf2_echo)
+    rotation, translation = tf2_echo.get_transform()
+    while rotation is None and translation is None:
+        print("listening to transform")
+        rclpy.spin_once(tf2_echo)
+        time.sleep(0.1) 
 
-    # Create CalibrateHandEye node
-    calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png')
-    R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
+    # Create CalibrateHandEye node only if we got the transform
+    if rotation is not None or translation is not None:
+        calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png')
+        R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
 
-    if R_cam2gripper is not None and t_cam2gripper is not None:
-        print("Camera to Gripper Rotation:")
-        print(R_cam2gripper)
-        print("Camera to Gripper Translation:")
-        print(t_cam2gripper)
+        if R_cam2gripper is not None and t_cam2gripper is not None:
+            print("Camera to Gripper Rotation:")
+            print(R_cam2gripper)
+            print("Camera to Gripper Translation:")
+            print(t_cam2gripper)
+        else:
+            print("Calibration failed")
     else:
-        print("Calibration failed")
+        print("Failed to get transform")
 
+    tf2_echo.destroy_node()
     k4a.stop()
     rclpy.shutdown()
 
