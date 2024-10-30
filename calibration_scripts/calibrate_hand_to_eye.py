@@ -72,12 +72,41 @@ class TF2Echo(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.target_frame = 'link_0'
-        self.source_frame = 'world'
+        self.source_frame = 'link_ee'
         self.timer = self.create_timer(1.0, self.timer_callback)
-        self.transform = None
+        self.rotation = None;
+        self.translation = None;
 
+
+        self.timer = self.create_timer(1.0, self.timer_callback)
+        self.transform_received = False
+
+    
     def timer_callback(self):
-        self.transform = self.get_transform()
+            if not self.transform_received:
+                try:
+                    transform: TransformStamped = self.tf_buffer.lookup_transform(
+                        self.target_frame, self.source_frame, rclpy.time.Time())
+                
+                    
+                    self.translation = np.array([
+                        transform.transform.translation.x,
+                        transform.transform.translation.y,
+                        transform.transform.translation.z
+                    ])
+                    self.rotation = self.quaternion_to_rotation_matrix(
+                        transform.transform.rotation.x,
+                        transform.transform.rotation.y,
+                        transform.transform.rotation.z,
+                        transform.transform.rotation.w
+                    )
+                    print(f"rotation: {self.rotation}")
+                    print(f"translation: {self.translation}")
+                    self.transform_received = True
+                    self.timer.cancel()
+                except Exception as e:
+                    self.get_logger().error(f'Could not get transform: {str(e)}')
+
 
     def get_transform(self):
         try:
@@ -154,7 +183,6 @@ class CalibrateHandEye(Node):
         )
         return R_cam2gripper, t_cam2gripper
 
-
 def main():
     rclpy.init()
 
@@ -162,18 +190,25 @@ def main():
     k4a = PyK4A()
     k4a.start()
     
-    # Create and spin TF2Echo node for a few seconds to get transforms
+    # Create and spin TF2Echo node to get transforms
     tf2_echo = TF2Echo()
-    rclpy.spin_once(tf2_echo)
-    rotation, translation = tf2_echo.get_transform()
-    while rotation is None and translation is None:
-        print("listening to transform")
-        rclpy.spin_once(tf2_echo)
-        time.sleep(0.1) 
 
-    # Create CalibrateHandEye node only if we got the transform
-    if rotation is not None and translation is not None:
-        calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png', rotation, translation)
+    # Loop to manually spin until we get the transform
+    while rclpy.ok():
+        rclpy.spin_once(tf2_echo)
+        
+        # Check if the transform has been received
+        if tf2_echo.translation is not None and tf2_echo.rotation is not None:
+            print("Transform obtained, starting calibration")
+            break  # Exit the loop when transform is received
+
+        # Sleep briefly to prevent busy waiting
+        time.sleep(0.1)
+
+    # Proceed with calibration if the transform is obtained
+    if tf2_echo.translation is not None and tf2_echo.rotation is not None:
+        print("started calculation")
+        calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png', tf2_echo.rotation, tf2_echo.translation)
         R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
 
         if R_cam2gripper is not None and t_cam2gripper is not None:

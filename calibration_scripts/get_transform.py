@@ -13,7 +13,7 @@ class TF2Echo(Node):
         
         # Set the frames you want to monitor
         self.target_frame = 'link_0'
-        self.source_frame = 'world'
+        self.source_frame = 'link_ee'
         
         self.timer = self.create_timer(1.0, self.timer_callback)
 
