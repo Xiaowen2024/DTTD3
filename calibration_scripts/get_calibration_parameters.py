@@ -229,21 +229,6 @@ def main():
         # Sleep briefly to prevent busy waiting
         time.sleep(0.1)
 
-    # # Proceed with calibration if the transform is obtained
-    # if tf2_echo.translation is not None and tf2_echo.rotation is not None:
-    #     print("started calculation")
-    #     calibrate_node = CalibrateHandEye(k4a, 'front_bottom_right.png', tf2_echo.rotation, tf2_echo.translation)
-    #     R_cam2gripper, t_cam2gripper = calibrate_node.calibrate_hand_eye()
-
-    #     if R_cam2gripper is not None and t_cam2gripper is not None:
-    #         print("Camera to Gripper Rotation:")
-    #         print(R_cam2gripper)
-    #         print("Camera to Gripper Translation:")
-    #         print(t_cam2gripper)
-    #     else:
-    #         print("Calibration failed")
-    # else:
-    #     print("Failed to get transform")
 
     tf2_echo.destroy_node()
     k4a.stop()
