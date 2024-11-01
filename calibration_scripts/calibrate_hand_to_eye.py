@@ -3,14 +3,11 @@ import rclpy
 from rclpy.node import Node
 from tf2_ros import Buffer, TransformListener
 from geometry_msgs.msg import TransformStamped
-from pyk4a import PyK4A, Config
 import cv2
-import matplotlib.pyplot as plt
-import time
 
-class CalibrateHandEye(Node):
+class CalibrateHandEye():
     def __init__(self, R_gripper2base_path, t_gripper2base_path, R_target2cam_path, t_target2cam_path):
-        super().__init__('calibrate_hand_eye')
+        super().__init__()
         self.R_gripper2base = np.loadtxt(R_gripper2base_path).reshape(-1, 3, 3)
         self.t_gripper2base = np.loadtxt(t_gripper2base_path).reshape(-1, 3)
         self.R_target2cam = np.loadtxt(R_target2cam_path).reshape(-1, 3, 3)
