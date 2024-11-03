@@ -1,5 +1,3 @@
-# README
-
 ## Calibration
 Scripts for hand-to-eye calibration, using transformation data from a robot and a camera.
 
