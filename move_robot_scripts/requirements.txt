@@ -1,0 +1,7 @@
+mujoco==3.2.3
+mujoco-python-viewer==0.1.4
+numpy==1.24.3
+scipy==1.10.1
+stable-baselines==2.10.2
+stable_baselines3==2.3.2
+torch==1.13.0
