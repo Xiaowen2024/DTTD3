@@ -24,3 +24,9 @@ Scripts for hand-to-eye calibration, using transformation data from a robot and 
 - #### `calibrate_hand_to_eye.py`
    - Loads saved transformations from `get_calibration_parameters.py`.
    - Uses OpenCV's `calibrateHandEye` to compute the rotation (`R_cam2gripper`) and translation (`t_cam2gripper`) matrices between camera and gripper, outputting these values.
+
+
+commands for ros 1: 
+roslaunch lbr_moveit moveit_planning_execution.launch model:=iiwa14 sim:=false
+
+$ export ROS_NAMESPACE=lbr
