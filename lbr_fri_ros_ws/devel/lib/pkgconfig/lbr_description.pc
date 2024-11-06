@@ -1,0 +1,8 @@
+prefix=/home/dvij/learning_table_tennis_from_scratch/lbr_fri_ros_ws/devel
+
+Name: lbr_description
+Description: Description of lbr_description
+Version: 1.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

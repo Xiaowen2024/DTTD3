@@ -1,0 +1,2 @@
+fri/fri:fri/nanopb:lbr_fri_ros_stack/examples/moveit_cpp_examples:lbr_fri_ros_stack/examples/moveit_python_examples:lbr_fri_ros_stack/lbr_control:lbr_fri_ros_stack/lbr_description:lbr_fri_ros_stack/lbr_fri_ros:lbr_fri_ros_stack/lbr_fri_ros_stack:lbr_fri_ros_stack/lbr_gazebo:lbr_fri_ros_stack/lbr_moveit:lbr_fri_ros_stack/lbr_msgs
+-DCATKIN_DEVEL_PREFIX=/home/dvij/learning_table_tennis_from_scratch/lbr_fri_ros_ws/devel -DCMAKE_INSTALL_PREFIX=/home/dvij/learning_table_tennis_from_scratch/lbr_fri_ros_ws/install -G Unix Makefiles

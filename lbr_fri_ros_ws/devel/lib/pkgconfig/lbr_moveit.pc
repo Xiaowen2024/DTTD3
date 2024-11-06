@@ -1,0 +1,8 @@
+prefix=/home/dvij/learning_table_tennis_from_scratch/lbr_fri_ros_ws/devel
+
+Name: lbr_moveit
+Description: Description of lbr_moveit
+Version: 0.3.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
