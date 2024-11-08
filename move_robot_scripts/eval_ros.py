@@ -1,5 +1,5 @@
 from mujoco_env_only_kuka import KukaTennisEnv
-from stable_baselines3 import PPO
+# from stable_baselines3 import PPO
 from geometry_msgs.msg import PoseStamped
 import rospy
 from control_msgs.msg import JointTrajectoryControllerState
@@ -190,7 +190,7 @@ if __name__ == '__main__':
         # Initialize the ROS node
         rospy.init_node('kuka_joint_controller', anonymous=True)
         env = KukaTennisEnv(proc_id=1)
-        model = PPO.load("logs/best_model/best_model")
+        # model = PPO.load("logs/best_model/best_model")
         obs, _ = env.reset()
         
         if args.ik_rl:
