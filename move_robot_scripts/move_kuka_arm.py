@@ -12,38 +12,73 @@ import numpy as np
 import argparse
 from mujoco_env_only_kuka_ik import KukaTennisEnv as KukaTennisEnvIK
 import moveit_commander
+from geometry_msgs.msg import Pose, Point, Quaternion
 import math
 import copy
+# import sys
+# import os
+# sys.path.append(os.path.abspath('calibration_scripts_ros1'))
+# from calibration_scripts_ros1.get_calibration_parameters import *
+
+# import sys
+# import os
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# calibration_dir = os.path.join(script_dir, 'calibration_scripts_ros1')
+# if os.path.exists(calibration_dir):
+#     sys.path.append(calibration_dir)
+#     try:
+#         from get_calibration_parameters import *
+#     except ImportError:
+#         print(f"Warning: get_calibration_parameters.py not found in {calibration_dir}")
+#         # If the import is optional, continue without it
+#         pass
+# else:
+#     print(f"Warning: Calibration directory not found at: {calibration_dir}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ik', action='store_true', help='Enable using traditional IK')
 args = parser.parse_args()
-
-
 RATE = 10
 
 def reset_target(x, y, z):
-    curr_target = np.array([0.,0.,0.,0.,0.,0.,0.])
+    curr_target = np.array([0., 0., 0., 0., 0., 0., 0.])
+
+    # Set the target position
     curr_target[0] = x
     curr_target[1] = y
     curr_target[2] = z
-    target_point = np.array([0.0, 0.0, 1.0]) 
-    (trans, rot) = listener.lookupTransform('world', 'lbr_link_ee', rospy.Time(0))
-    current_position = np.array(trans)
-    direction_vector = target_point - current_position
-    direction_vector = direction_vector / np.linalg.norm(direction_vector)
-    z_axis = direction_vector
-    up_vector = np.array([0.0, 0.0, 1.0])
+    
+    # Z-axis direction is a unit vector pointing up
+    z_axis = np.array([0.0, 0.0, 1.0])  
+    up_vector = np.array([0.0, 0.0, 1.0])  # This is the "up" direction in world coordinates
+    
+    # You can set the orientation directly here, e.g., facing the "up" direction.
     if np.allclose(z_axis, up_vector):
-        up_vector = np.array([0.0, 1.0, 0.0])  
-    x_axis = np.cross(up_vector, z_axis)
-    x_axis = x_axis / np.linalg.norm(x_axis)
-    y_axis = np.cross(z_axis, x_axis)
+        up_vector = np.array([0.0, 1.0, 0.0])  # Adjust if needed for different orientations
+
+    # Compute the axes based on desired orientation
+    x_axis = np.cross(up_vector, z_axis)  # Right-hand rule to get the x-axis
+    x_axis = x_axis / np.linalg.norm(x_axis)  # Normalize to ensure it's a unit vector
+    
+    y_axis = np.cross(z_axis, x_axis)  # Orthogonal to both x and z axes
+    y_axis = y_axis / np.linalg.norm(y_axis)  # Normalize
+    
+    # Form the rotation matrix
     rotation_matrix = np.array([x_axis, y_axis, z_axis]).T
+    
+    # Convert the rotation matrix to a quaternion
     r = R.from_matrix(rotation_matrix)
-    quaternion = r.as_quat()
-    curr_target[3:7] = quaternion
+    rotation_30_deg = R.from_euler('x', 0, degrees=True)  # Rotate 30 degrees around the Z-axis
+    final_quaternion = rotation_30_deg * r  # Apply the rotation
+    rotation_180_deg = R.from_euler('z', 180, degrees=True)
+    final_quaternion = rotation_180_deg * final_quaternion
+
+    # Set the quaternion (orientation)
+    curr_target[3:7] = final_quaternion.as_quat()
+
     return curr_target
+
+
 
 # Callback function for the subscriber
 def joint_state_callback(data):
@@ -197,36 +232,66 @@ if __name__ == '__main__':
             name = 'arm'
             group = moveit_commander.MoveGroupCommander(name)
             group.set_max_velocity_scaling_factor(1.0)
+            
             target = 'home'
             group.set_named_target(target)
             group.go()
             group.stop()
             rospy.loginfo('Done.')   
-            for x in range(-1, 1):
-                for y in range(-1,1):
-                    for z in range(0, 2):
-                        pose = group.get_current_pose().pose
-                        waypoints = []
-                        new_target = reset_target(x, y, z)
-                        pose.position.x = new_target[0]
-                        pose.position.y = new_target[1]
-                        pose.position.z = new_target[2]
-                        pose.orientation.x = new_target[3]
-                        pose.orientation.y = new_target[4]
-                        pose.orientation.z = new_target[5]
-                        pose.orientation.w = new_target[6]
-                        waypoints.append(copy.deepcopy(pose))
-                        plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
-                        group.execute(plan)
-                        group.stop()
-                        print(f"x={x}, y={y}, z={z}")
-                        rospy.loginfo('Done.')
-                        rospy.sleep(2)
-        else :
-            # Main loop to publish commands at 20 Hz
-            while not rospy.is_shutdown():
-                publish_trajectory_command()
-                rate.sleep()
+            x = 0.3
+            y = 0.6
+            z = 0.7
+            new_target = reset_target(x, y, z)
+            pose = group.get_current_pose().pose
+            waypoints = []
+            new_target = reset_target(x, y, z)
+            pose.position.x = new_target[0]
+            pose.position.y = new_target[1]
+            pose.position.z = new_target[2]
+            pose.orientation.x = new_target[3]
+            pose.orientation.y = new_target[4]
+            pose.orientation.z = new_target[5]
+            pose.orientation.w = new_target[6]
+            waypoints.append(copy.deepcopy(pose))
+            plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
+            if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
+                rospy.logwarn("Cartesian path planning failed.")
+            else:
+                group.execute(plan, wait=True)
+                group.stop()
+                print(f"x: {x}, y: {y}, z: {z}")
+                rospy.sleep(2)
+            # pose_target = Pose()
+
+            # # Set the target position (x, y, z)
+            # pose_target.position.x = 0.5
+            # pose_target.position.y = 0.0
+            # pose_target.position.z = 1.0
+
+            # # Set the target orientation (as a quaternion, x, y, z, w)
+            # pose_target.orientation.x = 0.0
+            # pose_target.orientation.y = 0.0
+            # pose_target.orientation.z = 0.707  # Example value
+            # pose_target.orientation.w = 0.707  # Example value
+
+            # # Set the target pose
+            # group.set_pose_target(pose_target)
+
+            # # Plan and execute the motion
+            # success = group.go(wait=True)
+
+            # # Stop the robot after the movement
+            # group.stop()
+
+            # # Clear the target pose (optional, but recommended for cleanup)
+            # group.clear_pose_targets()
+
+
+        else:
+                # Main loop to publish commands at 20 Hz
+                while not rospy.is_shutdown():
+                    publish_trajectory_command()
+                    rate.sleep()
 
         
 

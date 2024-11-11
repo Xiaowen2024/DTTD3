@@ -5,7 +5,7 @@ import rospy
 import tf
 from tf2_ros import Buffer, TransformListener
 from geometry_msgs.msg import TransformStamped
-from pyk4a import PyK4A, Config
+from pyk4a import PyK4A, Config, ImageFormat, DepthMode
 import cv2
 import matplotlib.pyplot as plt
 import time
@@ -16,7 +16,7 @@ class CameraCalibration:
     @staticmethod
     def save_color_camera_matrix(calibration):
         camera_matrix = calibration.get_camera_matrix(1)
-        with open('color_camera_matrix.txt', 'w') as f:
+        with open('calibration_color_camera_matrix.txt', 'w') as f:
             np.savetxt(f, camera_matrix, fmt='%.6f')
 
     @staticmethod
@@ -26,7 +26,7 @@ class CameraCalibration:
     @staticmethod
     def save_color_dist_coefficients(calibration):
         dist_coeffs = calibration.get_distortion_coefficients(1)
-        with open('color_camera_dist_coeffs.txt', 'w') as f:
+        with open('calibration_color_camera_dist_coeffs.txt', 'w') as f:
             np.savetxt(f, dist_coeffs, fmt='%.6f')
 
     @staticmethod
@@ -70,23 +70,23 @@ class CameraCalibration:
             
             # Save R_target2cam
             try:
-                existing_rotations = np.loadtxt('target2cam_rotations.txt')
+                existing_rotations = np.loadtxt('calibration_target2cam_rotations.txt')
                 existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('target2cam_rotations.txt',
+                np.savetxt('calibration_target2cam_rotations.txt',
                           np.vstack((existing_rotations, R_target2cam.reshape(1, 3, 3))).reshape(-1, 3),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('target2cam_rotations.txt', R_target2cam, fmt='%.6f')
+                np.savetxt('calibration_target2cam_rotations.txt', R_target2cam, fmt='%.6f')
 
             # Save tvec
             try:
-                existing_translations = np.loadtxt('target2cam_translations.txt')
+                existing_translations = np.loadtxt('calibration_target2cam_translations.txt')
                 existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('target2cam_translations.txt',
+                np.savetxt('calibration_target2cam_translations.txt',
                           np.vstack((existing_translations, tvec.reshape(1, 3))),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('target2cam_translations.txt', tvec.reshape(1, 3), fmt='%.6f')
+                np.savetxt('calibration_target2cam_translations.txt', tvec.reshape(1, 3), fmt='%.6f')
 
             return R_target2cam, tvec
 
@@ -146,23 +146,23 @@ class TF2Echo:
             
             # Save rotation matrix
             try:
-                existing_rotations = np.loadtxt('gripper2base_rotations.txt')
+                existing_rotations = np.loadtxt('calibration_gripper2base_rotations.txt')
                 existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('gripper2base_rotations.txt',
+                np.savetxt('calibration_gripper2base_rotations.txt',
                           np.vstack((existing_rotations, rotation.reshape(1, 3, 3))).reshape(-1, 3),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('gripper2base_rotations.txt', rotation, fmt='%.6f')
+                np.savetxt('calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
 
             # Save translation vector
             try:
-                existing_translations = np.loadtxt('gripper2base_translations.txt')
+                existing_translations = np.loadtxt('calibration_gripper2base_translations.txt')
                 existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('gripper2base_translations.txt',
+                np.savetxt('calibration_gripper2base_translations.txt',
                           np.vstack((existing_translations, translation.reshape(1, 3))),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
+                np.savetxt('calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
 
             return rotation, translation
         except Exception as e:
@@ -188,12 +188,15 @@ class TF2Echo:
 
 def main():
     # Initialize the K4A camera
-    k4a = PyK4A()
+    config = Config(color_format=ImageFormat.COLOR_MJPG, depth_mode = DepthMode.OFF, synchronized_images_only = False)
+    k4a = PyK4A(config=config)
     k4a.start()  
     capture = k4a.get_capture()
     img_color = capture.color
-    plt.imsave('test.png', img_color)
-    image_path = 'test.png'
+    img_color = cv2.imdecode(img_color, cv2.IMREAD_COLOR)
+    print(img_color.shape)
+    plt.imsave('calibration_images/calibration_front_right.jpg', img_color)
+    image_path = 'calibration_images/calibration_front_right.jpg'
     
     calibration = k4a.calibration
     camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
@@ -204,7 +207,7 @@ def main():
         image_path,
         camera_matrix,
         dist_coeffs,
-        0.2159
+        0.2047
     )
     # Initialize TF2Echo node
     tf2_echo = TF2Echo()

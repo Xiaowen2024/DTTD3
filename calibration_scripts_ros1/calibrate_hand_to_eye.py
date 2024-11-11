@@ -1,6 +1,4 @@
 import numpy as np
-import rclpy
-from rclpy.node import Node
 from tf2_ros import Buffer, TransformListener
 from geometry_msgs.msg import TransformStamped
 import cv2
@@ -26,7 +24,7 @@ class CalibrateHandEye():
         return R_cam2gripper, t_cam2gripper
 
 def main():
-    calibrateHandEye = CalibrateHandEye('gripper2base_rotations.txt', 'gripper2base_translations.txt', 'target2cam_rotations.txt', 'target2cam_translations.txt')
+    calibrateHandEye = CalibrateHandEye('calibration_gripper2base_rotations.txt', 'calibration_gripper2base_translations.txt', 'calibration_target2cam_rotations.txt', 'calibration_target2cam_translations.txt')
     R_cam2gripper, t_cam2gripper = calibrateHandEye.calibrate_hand_eye()
     print(f"R_cam2gripper: {R_cam2gripper}")
     print(f"t_cam2gripper: {t_cam2gripper}")
