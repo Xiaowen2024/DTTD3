@@ -68,7 +68,7 @@ def reset_target(x, y, z):
     
     # Convert the rotation matrix to a quaternion
     r = R.from_matrix(rotation_matrix)
-    rotation_30_deg = R.from_euler('x', 0, degrees=True)  # Rotate 30 degrees around the Z-axis
+    rotation_30_deg = R.from_euler('x', 30, degrees=True)  # Rotate 30 degrees around the Z-axis
     final_quaternion = rotation_30_deg * r  # Apply the rotation
     rotation_180_deg = R.from_euler('z', 180, degrees=True)
     final_quaternion = rotation_180_deg * final_quaternion
@@ -232,19 +232,21 @@ if __name__ == '__main__':
             name = 'arm'
             group = moveit_commander.MoveGroupCommander(name)
             group.set_max_velocity_scaling_factor(1.0)
-            
             target = 'home'
             group.set_named_target(target)
             group.go()
             group.stop()
             rospy.loginfo('Done.')   
-            x = 0.3
-            y = 0.6
-            z = 0.7
-            new_target = reset_target(x, y, z)
             pose = group.get_current_pose().pose
-            waypoints = []
+            # print(pose.position.x)
+            # print(pose.position.y)
+            # print(pose.position.z)
+            x = 0.0
+            y = 0.0
+            z = 1
             new_target = reset_target(x, y, z)
+            # pose = group.get_current_pose().pose
+            waypoints = []
             pose.position.x = new_target[0]
             pose.position.y = new_target[1]
             pose.position.z = new_target[2]

@@ -10,13 +10,14 @@ import cv2
 import matplotlib.pyplot as plt
 import time
 import tf2_ros
+from scipy.spatial.transform import Rotation as R
 
 
 class CameraCalibration:
     @staticmethod
     def save_color_camera_matrix(calibration):
         camera_matrix = calibration.get_camera_matrix(1)
-        with open('calibration_color_camera_matrix.txt', 'w') as f:
+        with open('updated_calibration_color_camera_matrix.txt', 'w') as f:
             np.savetxt(f, camera_matrix, fmt='%.6f')
 
     @staticmethod
@@ -26,7 +27,7 @@ class CameraCalibration:
     @staticmethod
     def save_color_dist_coefficients(calibration):
         dist_coeffs = calibration.get_distortion_coefficients(1)
-        with open('calibration_color_camera_dist_coeffs.txt', 'w') as f:
+        with open('updated_calibration_color_camera_dist_coeffs.txt', 'w') as f:
             np.savetxt(f, dist_coeffs, fmt='%.6f')
 
     @staticmethod
@@ -52,41 +53,47 @@ class CameraCalibration:
         aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
         parameters = cv2.aruco.DetectorParameters()
         frame = cv2.imread(image_path)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         # Detect ArUco markers in the image
-        corners, ids, rejected = detector.detectMarkers(frame)
+        corners, ids, _ = detector.detectMarkers(frame)
+
+    
         if ids is not None:
             # Draw detected markers for visualization
             frame_markers = cv2.aruco.drawDetectedMarkers(frame.copy(), corners, ids)
+            cv2.imshow('Detected Markers', frame_markers)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
+            # retval, rvec, tvec = cv2.aruco.estimatePoseSingleMarkers(corners, marker_length,  camera_matrix, dist_coeffs)
             # Estimate pose of each marker
             rvecs, tvecs = CameraCalibration.estimate_pose_single_markers(corners, camera_matrix, dist_coeffs, marker_length)
-            rvec = rvecs[0] 
             tvec = tvecs[0]
+            rvec = rvecs[0]
             R_target2cam, _ = cv2.Rodrigues(rvec)
             print(f"R_target2Cam: {R_target2cam}")
-            print(f"T_target2Cam: {tvec}")
+            print(f"T_target2Cam: {tvec}") 
             
             # Save R_target2cam
             try:
-                existing_rotations = np.loadtxt('calibration_target2cam_rotations.txt')
+                existing_rotations = np.loadtxt('updated_calibration_target2cam_rotations.txt')
                 existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('calibration_target2cam_rotations.txt',
+                np.savetxt('updated_calibration_target2cam_rotations.txt',
                           np.vstack((existing_rotations, R_target2cam.reshape(1, 3, 3))).reshape(-1, 3),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('calibration_target2cam_rotations.txt', R_target2cam, fmt='%.6f')
+                np.savetxt('updated_calibration_target2cam_rotations.txt', R_target2cam, fmt='%.6f')
 
             # Save tvec
             try:
-                existing_translations = np.loadtxt('calibration_target2cam_translations.txt')
+                existing_translations = np.loadtxt('updated_calibration_target2cam_translations.txt')
                 existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('calibration_target2cam_translations.txt',
+                np.savetxt('updated_calibration_target2cam_translations.txt',
                           np.vstack((existing_translations, tvec.reshape(1, 3))),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('calibration_target2cam_translations.txt', tvec.reshape(1, 3), fmt='%.6f')
+                np.savetxt('updated_calibration_target2cam_translations.txt', tvec.reshape(1, 3), fmt='%.6f')
 
             return R_target2cam, tvec
 
@@ -143,47 +150,52 @@ class TF2Echo:
                 transform.transform.rotation.z,
                 transform.transform.rotation.w
             )
+
+         
             
             # Save rotation matrix
             try:
-                existing_rotations = np.loadtxt('calibration_gripper2base_rotations.txt')
+                existing_rotations = np.loadtxt('updated_calibration_gripper2base_rotations.txt')
                 existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('calibration_gripper2base_rotations.txt',
+                np.savetxt('updated_calibration_gripper2base_rotations.txt',
                           np.vstack((existing_rotations, rotation.reshape(1, 3, 3))).reshape(-1, 3),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
+                np.savetxt('updated_calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
 
             # Save translation vector
             try:
-                existing_translations = np.loadtxt('calibration_gripper2base_translations.txt')
+                existing_translations = np.loadtxt('updated_calibration_gripper2base_translations.txt')
                 existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('calibration_gripper2base_translations.txt',
+                np.savetxt('updated_calibration_gripper2base_translations.txt',
                           np.vstack((existing_translations, translation.reshape(1, 3))),
                           fmt='%.6f')
             except (OSError, IOError):
-                np.savetxt('calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
+                np.savetxt('updated_calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
 
             return rotation, translation
         except Exception as e:
             rospy.logerr(f'Could not save transform: {str(e)}')
 
-    def quaternion_to_rotation_matrix(self, x, y, z, w):
-        """
-        Convert a quaternion (x, y, z, w) to a rotation matrix (3x3).
-        """
-        R = np.zeros((3, 3))
-        R[0, 0] = 1 - 2 * (y * y + z * z)
-        R[0, 1] = 2 * (x * y - z * w)
-        R[0, 2] = 2 * (x * z + y * w)
-        R[1, 0] = 2 * (x * y + z * w)
-        R[1, 1] = 1 - 2 * (x * x + z * z)
-        R[1, 2] = 2 * (y * z - x * w)
-        R[2, 0] = 2 * (x * z - y * w)
-        R[2, 1] = 2 * (y * z + x * w)
-        R[2, 2] = 1 - 2 * (x * x + y * y)
+    # def quaternion_to_rotation_matrix(self, x, y, z, w):
+    #     """
+    #     Convert a quaternion (x, y, z, w) to a rotation matrix (3x3).
+    #     """
+    #     R = np.zeros((3, 3))
+    #     R[0, 0] = 1 - 2 * (y * y + z * z)
+    #     R[0, 1] = 2 * (x * y - z * w)
+    #     R[0, 2] = 2 * (x * z + y * w)
+    #     R[1, 0] = 2 * (x * y + z * w)
+    #     R[1, 1] = 1 - 2 * (x * x + z * z)
+    #     R[1, 2] = 2 * (y * z - x * w)
+    #     R[2, 0] = 2 * (x * z - y * w)
+    #     R[2, 1] = 2 * (y * z + x * w)
+    #     R[2, 2] = 1 - 2 * (x * x + y * y)
         
-        return R
+    #     return R
+
+    def quaternion_to_rotation_matrix(self, x, y, z, w):
+        return R.from_quat([x, y, z, w]).as_matrix()
 
 
 def main():
@@ -194,9 +206,8 @@ def main():
     capture = k4a.get_capture()
     img_color = capture.color
     img_color = cv2.imdecode(img_color, cv2.IMREAD_COLOR)
-    print(img_color.shape)
-    plt.imsave('calibration_images/calibration_front_right.jpg', img_color)
-    image_path = 'calibration_images/calibration_front_right.jpg'
+    plt.imsave('calibration_images/calibration_8.jpg', img_color)
+    image_path = 'calibration_images/calibration_8.jpg'
     
     calibration = k4a.calibration
     camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
