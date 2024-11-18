@@ -70,12 +70,12 @@ def reset_target(x, y, z, x_rot, y_rot, z_rot):
     
     # Convert the rotation matrix to a quaternion
     r = R.from_matrix(rotation_matrix)
-    rotation_30_deg = R.from_euler('x',  xrot, degrees=True)  # Rotate 30 degrees around the Z-axis
-    final_quaternion = rotation_30_deg * r
-    rotation_30_deg = R.from_euler('y', yrot, degrees=True)  # Rotate 30 degrees around the Z-axis
-    final_quaternion = rotation_30_deg * r  # Apply the rotation
-    rotation_180_deg = R.from_euler('z', zrot, degrees=True)
-    final_quaternion = rotation_180_deg * final_quaternion
+    rotation_x = R.from_euler('x',  xrot, degrees=True)  # Rotate 30 degrees around the Z-axis
+    inter_quaternion_x = rotation_x * r
+    rotation_y = R.from_euler('y', yrot, degrees=True)  # Rotate 30 degrees around the Z-axis
+    inter_quaternion_y = rotation_y * inter_quaternion_x  # Apply the rotation
+    rotation_z = R.from_euler('z', zrot, degrees=True)
+    final_quaternion = rotation_z * inter_quaternion_y
 
     # Set the quaternion (orientation)
     curr_target[3:7] = final_quaternion.as_quat()
@@ -243,13 +243,40 @@ if __name__ == '__main__':
             # rospy.loginfo('Done.')  
 
             n_translations, n_rotations = 5,5
-            x_values = [-0.2, 0, 0.2]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
-            y_values = [0, 0.15, 0.3] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
-            z_values = [0.9, 1.0, 1.1]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
-            x_rot_values = [-30, -15, 0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
-            y_rot_values = [-30, 0, 15]#-30
-            z_rot_values = [-30, -22, -15]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
+            x_values = [-0.1, 0, 0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+            y_values = [0, 0.2] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
+            z_values = [0.9, 1.2]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
+            x_rot_values = [-30, -15,  0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            y_rot_values = [-15, 0, 15]#-30
+            z_rot_values = [-5, 0, 5]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
 
+
+            # pose = group.get_current_pose().pose
+            # x = 0.0
+            # y = 0.0
+            # z = 1
+            # xrot = 15
+            # yrot = 0
+            # zrot = 0
+            # new_target = reset_target(x, y, z, xrot, yrot, zrot)
+            # # pose = group.get_current_pose().pose
+            # waypoints = []
+            # pose.position.x = new_target[0]
+            # pose.position.y = new_target[1]
+            # pose.position.z = new_target[2]
+            # pose.orientation.x = new_target[3]
+            # pose.orientation.y = new_target[4]
+            # pose.orientation.z = new_target[5]
+            # pose.orientation.w = new_target[6]
+            # waypoints.append(copy.deepcopy(pose))
+            # plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
+
+            # if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
+            #     rospy.logwarn("Cartesian path planning failed.")
+            # else:
+            #     index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
+            #     group.execute(plan, wait=True)
+            #     group.stop()
             
 
             k4a, tf_echo = initialize()
@@ -262,11 +289,7 @@ if __name__ == '__main__':
                                 for zrot in z_rot_values:
                                     print(f"Now moving to: x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
                                     pose = group.get_current_pose().pose
-                                    #x = 0.0
-                                    #y = 0.0
-                                    #z = 1
                                     new_target = reset_target(x, y, z, xrot, yrot, zrot)
-                                    # pose = group.get_current_pose().pose
                                     waypoints = []
                                     pose.position.x = new_target[0]
                                     pose.position.y = new_target[1]
@@ -286,39 +309,13 @@ if __name__ == '__main__':
                                         group.stop()
                                         get_parameters(index, k4a, tf_echo)
                                         print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
-                                        time.sleep(1)
+                                        time.sleep(0.5)
                                         #inp = input("PRESS NOW")
                                         #if inp == 'q':
                                         #    close_camera(k4a)
                                         #    sys.exit()
             close_camera(k4a)
-        
-
-            # pose_target = Pose()
-
-            # # Set the target position (x, y, z)
-            # pose_target.position.x = 0.5
-            # pose_target.position.y = 0.0
-            # pose_target.position.z = 1.0
-
-            # # Set the target orientation (as a quaternion, x, y, z, w)
-            # pose_target.orientation.x = 0.0
-            # pose_target.orientation.y = 0.0
-            # pose_target.orientation.z = 0.707  # Example value
-            # pose_target.orientation.w = 0.707  # Example value
-
-            # # Set the target pose
-            # group.set_pose_target(pose_target)
-
-            # # Plan and execute the motion
-            # success = group.go(wait=True)
-
-            # # Stop the robot after the movement
-            # group.stop()
-
-            # # Clear the target pose (optional, but recommended for cleanup)
-            # group.clear_pose_targets()
-
+    
 
         else:
                 # Main loop to publish commands at 20 Hz
