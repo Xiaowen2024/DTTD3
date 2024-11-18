@@ -20,7 +20,7 @@ import sys
 import os
 # os.chdir('/home/dttd3/DTTD3/calibration_scripts_ros1')
 sys.path.append('/home/dttd3/DTTD3/calibration_scripts_ros1')
-from get_calibration_parameters import initialize, get_parameters
+from get_calibration_parameters import initialize, get_parameters, close_camera
 
 # import sys
 # import os
@@ -236,29 +236,30 @@ if __name__ == '__main__':
             name = 'arm'
             group = moveit_commander.MoveGroupCommander(name)
             group.set_max_velocity_scaling_factor(1.0)
-            target = 'home'
-            group.set_named_target(target)
-            group.go()
-            group.stop()
-            rospy.loginfo('Done.')  
+            # target = 'home'
+            # group.set_named_target(target)
+            # group.go()
+            # group.stop()
+            # rospy.loginfo('Done.')  
 
             n_translations, n_rotations = 5,5
-            x_values = [-0.2, 0.2]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
-            y_values = [0,0.3] #sorted([random.uniform(0, 0.3) for i in range(n_translations)])
-            z_values = [0.9, 1.1]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])
-            xyz_rot_values = [-30, 30] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
-            #z_rot_values = #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            x_values = [-0.2, 0, 0.2]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+            y_values = [0, 0.15, 0.3] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
+            z_values = [0.9, 1.0, 1.1]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
+            x_rot_values = [-30, -15, 0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            y_rot_values = [-30, 0, 15]#-30
+            z_rot_values = [-30, -22, -15]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
 
             
 
             k4a, tf_echo = initialize()
             
             for x in x_values:
-                for xrot in xyz_rot_values:
+                for xrot in x_rot_values:
                     for y in y_values:
-                        for yrot in xyz_rot_values:
+                        for yrot in y_rot_values:
                             for z in z_values:
-                                for zrot in xyz_rot_values:
+                                for zrot in z_rot_values:
                                     print(f"Now moving to: x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
                                     pose = group.get_current_pose().pose
                                     #x = 0.0
@@ -281,11 +282,16 @@ if __name__ == '__main__':
                                         rospy.logwarn("Cartesian path planning failed.")
                                     else:
                                         index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
-                                        get_parameters(index, k4a, tf_echo)
                                         group.execute(plan, wait=True)
                                         group.stop()
+                                        get_parameters(index, k4a, tf_echo)
                                         print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
-                                        input("PRESS NOW")
+                                        time.sleep(1)
+                                        #inp = input("PRESS NOW")
+                                        #if inp == 'q':
+                                        #    close_camera(k4a)
+                                        #    sys.exit()
+            close_camera(k4a)
         
 
             # pose_target = Pose()

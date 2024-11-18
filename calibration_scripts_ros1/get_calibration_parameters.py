@@ -284,6 +284,10 @@ def initialize():
     tf2_echo = TF2Echo()
     return k4a, tf2_echo
 
+    
+def close_camera(camera):
+    camera.stop()
+
 def get_parameters(index, k4a, tf2_echo):
     # config = Config(color_format=ImageFormat.COLOR_MJPG, depth_mode = DepthMode.OFF, synchronized_images_only = False)
     # k4a = PyK4A(config=config)
