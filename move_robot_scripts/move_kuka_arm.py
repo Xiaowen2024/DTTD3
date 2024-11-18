@@ -13,12 +13,14 @@ import argparse
 from mujoco_env_only_kuka_ik import KukaTennisEnv as KukaTennisEnvIK
 import moveit_commander
 from geometry_msgs.msg import Pose, Point, Quaternion
+import random
 import math
 import copy
-# import sys
-# import os
-# sys.path.append(os.path.abspath('calibration_scripts_ros1'))
-# from calibration_scripts_ros1.get_calibration_parameters import *
+import sys
+import os
+# os.chdir('/home/dttd3/DTTD3/calibration_scripts_ros1')
+sys.path.append('/home/dttd3/DTTD3/calibration_scripts_ros1')
+from get_calibration_parameters import initialize, get_parameters
 
 # import sys
 # import os
@@ -40,7 +42,7 @@ parser.add_argument('--ik', action='store_true', help='Enable using traditional 
 args = parser.parse_args()
 RATE = 10
 
-def reset_target(x, y, z):
+def reset_target(x, y, z, x_rot, y_rot, z_rot):
     curr_target = np.array([0., 0., 0., 0., 0., 0., 0.])
 
     # Set the target position
@@ -68,9 +70,11 @@ def reset_target(x, y, z):
     
     # Convert the rotation matrix to a quaternion
     r = R.from_matrix(rotation_matrix)
-    rotation_30_deg = R.from_euler('x', 30, degrees=True)  # Rotate 30 degrees around the Z-axis
+    rotation_30_deg = R.from_euler('x', -30, degrees=True)  # Rotate 30 degrees around the Z-axis
+    final_quaternion = rotation_30_deg * r
+    rotation_30_deg = R.from_euler('y', 5, degrees=True)  # Rotate 30 degrees around the Z-axis
     final_quaternion = rotation_30_deg * r  # Apply the rotation
-    rotation_180_deg = R.from_euler('z', 180, degrees=True)
+    rotation_180_deg = R.from_euler('z', 40, degrees=True)
     final_quaternion = rotation_180_deg * final_quaternion
 
     # Set the quaternion (orientation)
@@ -227,7 +231,7 @@ if __name__ == '__main__':
 
         # Keep the node alive and processing callbacks
         # Set the rate for publishing (10 Hz = 0.1 seconds)
-        rate = rospy.Rate(RATE)  # 10 Hz
+        rate = rospy.Rate(RATE)  
         if args.ik :
             name = 'arm'
             group = moveit_commander.MoveGroupCommander(name)
@@ -236,33 +240,49 @@ if __name__ == '__main__':
             group.set_named_target(target)
             group.go()
             group.stop()
-            rospy.loginfo('Done.')   
-            pose = group.get_current_pose().pose
-            # print(pose.position.x)
-            # print(pose.position.y)
-            # print(pose.position.z)
-            x = 0.0
-            y = 0.0
-            z = 1
-            new_target = reset_target(x, y, z)
-            # pose = group.get_current_pose().pose
-            waypoints = []
-            pose.position.x = new_target[0]
-            pose.position.y = new_target[1]
-            pose.position.z = new_target[2]
-            pose.orientation.x = new_target[3]
-            pose.orientation.y = new_target[4]
-            pose.orientation.z = new_target[5]
-            pose.orientation.w = new_target[6]
-            waypoints.append(copy.deepcopy(pose))
-            plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
-            if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
-                rospy.logwarn("Cartesian path planning failed.")
-            else:
-                group.execute(plan, wait=True)
-                group.stop()
-                print(f"x: {x}, y: {y}, z: {z}")
-                rospy.sleep(2)
+            rospy.loginfo('Done.')  
+
+            n_translations, n_rotations = 5,5
+            xy_values = [random.uniform(-0.2, 0.2) for i in range(n_translations)]
+            z_values = [random.uniform(0.8, 1.1) for i in range(n_translations)]
+            xyz_rot_values = [random.uniform(-30, 30) for i in range(n_rotations)]
+
+            print(xy_values, z_values, xyz_rot_values)
+
+            k4a, tf_echo = initialize()
+            
+            for x in xy_values:
+                for xrot in xyz_rot_values:
+                    for y in xy_values:
+                        for yrot in xyz_rot_values:
+                            for z in z_values:
+                                for zrot in xyz_rot_values:
+                                    pose = group.get_current_pose().pose
+                                    #x = 0.0
+                                    #y = 0.0
+                                    #z = 1
+                                    new_target = reset_target(x, y, z, xrot, yrot, zrot)
+                                    # pose = group.get_current_pose().pose
+                                    waypoints = []
+                                    pose.position.x = new_target[0]
+                                    pose.position.y = new_target[1]
+                                    pose.position.z = new_target[2]
+                                    pose.orientation.x = new_target[3]
+                                    pose.orientation.y = new_target[4]
+                                    pose.orientation.z = new_target[5]
+                                    pose.orientation.w = new_target[6]
+                                    waypoints.append(copy.deepcopy(pose))
+                                    plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
+
+                                    if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
+                                        rospy.logwarn("Cartesian path planning failed.")
+                                    else:
+                                        index = f"{x}_{y}_{z}_{xrot}_{yrot}_{zrot}"
+                                        get_parameters(index, k4a, tf_echo)
+                                        group.execute(plan, wait=True)
+                                        group.stop()
+                                        print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
+                                        rospy.sleep(2)
             # pose_target = Pose()
 
             # # Set the target position (x, y, z)

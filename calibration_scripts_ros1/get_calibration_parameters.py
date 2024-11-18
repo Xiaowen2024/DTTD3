@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import time
 import tf2_ros
 from scipy.spatial.transform import Rotation as R
+import json
 
 
 class CameraCalibration:
@@ -62,10 +63,6 @@ class CameraCalibration:
         if ids is not None:
             # Draw detected markers for visualization
             frame_markers = cv2.aruco.drawDetectedMarkers(frame.copy(), corners, ids)
-            cv2.imshow('Detected Markers', frame_markers)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-
             # retval, rvec, tvec = cv2.aruco.estimatePoseSingleMarkers(corners, marker_length,  camera_matrix, dist_coeffs)
             # Estimate pose of each marker
             rvecs, tvecs = CameraCalibration.estimate_pose_single_markers(corners, camera_matrix, dist_coeffs, marker_length)
@@ -76,31 +73,49 @@ class CameraCalibration:
             print(f"T_target2Cam: {tvec}") 
             
             # Save R_target2cam
+            # Load and update rotations
+            # Handle rotations
             try:
-                existing_rotations = np.loadtxt('updated_calibration_target2cam_rotations.txt')
-                existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('updated_calibration_target2cam_rotations.txt',
-                          np.vstack((existing_rotations, R_target2cam.reshape(1, 3, 3))).reshape(-1, 3),
-                          fmt='%.6f')
-            except (OSError, IOError):
-                np.savetxt('updated_calibration_target2cam_rotations.txt', R_target2cam, fmt='%.6f')
+                with open('11_17_parameters/calibration_target2cam_rotations.json', 'r') as f:
+                    data = json.load(f)
+                    rotations = np.array(data['rotations'])
+                    # Add new rotation
+                    rotations = np.vstack((rotations.reshape(-1, 3, 3),
+                                         R_target2cam.reshape(1, 3, 3)))
+            except (OSError, IOError, ValueError):
+                # Initialize new rotations array if file doesn't exist
+                rotations = R_target2cam.reshape(1, 3, 3)
 
-            # Save tvec
+            # Save updated rotations
+            with open('11_17_parameters/calibration_target2cam_rotations.json', 'w') as f:
+                json.dump({
+                    'rotations': rotations.tolist()
+                }, f, indent=2)
+
+            # Handle translations
             try:
-                existing_translations = np.loadtxt('updated_calibration_target2cam_translations.txt')
-                existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('updated_calibration_target2cam_translations.txt',
-                          np.vstack((existing_translations, tvec.reshape(1, 3))),
-                          fmt='%.6f')
-            except (OSError, IOError):
-                np.savetxt('updated_calibration_target2cam_translations.txt', tvec.reshape(1, 3), fmt='%.6f')
+                with open('11_17_parameters/calibration_target2cam_translations.json', 'r') as f:
+                    data = json.load(f)
+                    translations = np.array(data['translations'])
+                    # Add new translation
+                    translations = np.vstack((translations.reshape(-1, 3),
+                                           tvec.reshape(1, 3)))
+            except (OSError, IOError, ValueError):
+                # Initialize new translations array if file doesn't exist
+                translations = tvec.reshape(1, 3)
+
+            # Save updated translations
+            with open('11_17_parameters/calibration_target2cam_translations.json', 'w') as f:
+                json.dump({
+                    'translations': translations.tolist()
+                }, f, indent=2)
 
             return R_target2cam, tvec
 
 class TF2Echo:
     def __init__(self):
         # Initialize the ROS node
-        rospy.init_node('tf2_echo_node', anonymous=True)
+        # rospy.init_node('tf2_echo_node', anonymous=True)
         
         # Create a tf2 buffer and listener
         self.tf_buffer = tf2_ros.Buffer()
@@ -151,31 +166,96 @@ class TF2Echo:
                 transform.transform.rotation.w
             )
 
+            # Save transform data as JSON
+            transform_data = {
+                'rotation': rotation.tolist(),
+                'translation': translation.tolist()
+            }
+            # Save transform data to JSON file
+            # Handle rotations
+            try:
+                with open('11_17_parameters/calibration_gripper2base_rotations.json', 'r') as f:
+                    data = json.load(f)
+                    rotations = np.array(data['rotations'])
+                    rotations = np.vstack((rotations.reshape(-1, 3, 3),
+                                         rotation.reshape(1, 3, 3)))
+            except (OSError, IOError, ValueError):
+                rotations = rotation.reshape(1, 3, 3)
+
+            # Save rotations
+            with open('11_17_parameters/calibration_gripper2base_rotations.json', 'w') as f:
+                json.dump({
+                    'rotations': rotations.tolist()
+                }, f, indent=2)
+
+            # Handle translations
+            try:
+                with open('11_17_parameters/calibration_gripper2base_translations.json', 'r') as f:
+                    data = json.load(f)
+                    translations = np.array(data['translations'])
+                    translations = np.vstack((translations.reshape(-1, 3),
+                                           translation.reshape(1, 3)))
+            except (OSError, IOError, ValueError):
+                translations = translation.reshape(1, 3)
+
+            # Save translations
+            with open('11_17_parameters/calibration_gripper2base_translations.json', 'w') as f:
+                json.dump({
+                    'translations': translations.tolist()
+                }, f, indent=2)
+
+            return rotation, translation
+         
+        
+
          
             
             # Save rotation matrix
-            try:
-                existing_rotations = np.loadtxt('updated_calibration_gripper2base_rotations.txt')
-                existing_rotations = existing_rotations.reshape(-1, 3, 3)
-                np.savetxt('updated_calibration_gripper2base_rotations.txt',
-                          np.vstack((existing_rotations, rotation.reshape(1, 3, 3))).reshape(-1, 3),
-                          fmt='%.6f')
-            except (OSError, IOError):
-                np.savetxt('updated_calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
+        #     try:
+        #         existing_rotations = np.loadtxt('updated_calibration_gripper2base_rotations.txt')
+        #         existing_rotations = existing_rotations.reshape(-1, 3, 3)
+        #         np.savetxt('updated_calibration_gripper2base_rotations.txt',
+        #                   np.vstack((existing_rotations, rotation.reshape(1, 3, 3))).reshape(-1, 3),
+        #                   fmt='%.6f')
+        #     except (OSError, IOError):
+        #         np.savetxt('updated_calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
 
-            # Save translation vector
-            try:
-                existing_translations = np.loadtxt('updated_calibration_gripper2base_translations.txt')
-                existing_translations = existing_translations.reshape(-1, 3)
-                np.savetxt('updated_calibration_gripper2base_translations.txt',
-                          np.vstack((existing_translations, translation.reshape(1, 3))),
-                          fmt='%.6f')
-            except (OSError, IOError):
-                np.savetxt('updated_calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
+        #     # Save translation vector
+        #     try:
+        #         existing_translations = np.loadtxt('updated_calibration_gripper2base_translations.txt')
+        #         existing_translations = existing_translations.reshape(-1, 3)
+        #         np.savetxt('updated_calibration_gripper2base_translations.txt',
+        #                   np.vstack((existing_translations, translation.reshape(1, 3))),
+        #                   fmt='%.6f')
+        #     except (OSError, IOError):
+        #         np.savetxt('updated_calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
 
-            return rotation, translation
+        #     return rotation, translation
+    
+          # Save rotation matrix
+        #     try:
+        #         existing_rotations = np.loadtxt('updated_calibration_gripper2base_rotations.txt')
+        #         existing_rotations = existing_rotations.reshape(-1, 3, 3)
+        #         np.savetxt('updated_calibration_gripper2base_rotations.txt',
+        #                   np.vstack((existing_rotations, rotation.reshape(1, 3, 3))).reshape(-1, 3),
+        #                   fmt='%.6f')
+        #     except (OSError, IOError):
+        #         np.savetxt('updated_calibration_gripper2base_rotations.txt', rotation, fmt='%.6f')
+
+        #     # Save translation vector
+        #     try:
+        #         existing_translations = np.loadtxt('updated_calibration_gripper2base_translations.txt')
+        #         existing_translations = existing_translations.reshape(-1, 3)
+        #         np.savetxt('updated_calibration_gripper2base_translations.txt',
+        #                   np.vstack((existing_translations, translation.reshape(1, 3))),
+        #                   fmt='%.6f')
+        #     except (OSError, IOError):
+        #         np.savetxt('updated_calibration_gripper2base_translations.txt', translation.reshape(1, 3), fmt='%.6f')
+
+        #     return rotation, translation
         except Exception as e:
             rospy.logerr(f'Could not save transform: {str(e)}')
+
 
     # def quaternion_to_rotation_matrix(self, x, y, z, w):
     #     """
@@ -196,7 +276,39 @@ class TF2Echo:
 
     def quaternion_to_rotation_matrix(self, x, y, z, w):
         return R.from_quat([x, y, z, w]).as_matrix()
+    
+def initialize():
+    config = Config(color_format=ImageFormat.COLOR_MJPG, depth_mode = DepthMode.OFF, synchronized_images_only = False)
+    k4a = PyK4A(config=config)
+    k4a.start() 
+    tf2_echo = TF2Echo()
+    return k4a, tf2_echo
 
+def get_parameters(index, k4a, tf2_echo):
+    # config = Config(color_format=ImageFormat.COLOR_MJPG, depth_mode = DepthMode.OFF, synchronized_images_only = False)
+    # k4a = PyK4A(config=config)
+    # k4a.start()  
+    capture = k4a.get_capture()
+    img_color = capture.color
+    img_color = cv2.imdecode(img_color, cv2.IMREAD_COLOR)
+    image_path = '11_17_images/calibration' + index + ".jpg"
+    plt.imsave(image_path, img_color)
+    calibration = k4a.calibration
+    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
+    print(f"camera_matrix: {camera_matrix}")
+    dist_coeffs = CameraCalibration.get_color_dist_coefficients(calibration)
+    print(f"dist_coeffs: {dist_coeffs}")
+    CameraCalibration.get_target_camera_transform(
+        image_path,
+        camera_matrix,
+        dist_coeffs,
+        0.2047
+    )
+    # Initialize TF2Echo node
+    # tf2_echo = TF2Echo()
+    tf2_echo.listen_for_transform()
+    # k4a.stop()
+    # rospy.shutdown()
 
 def main():
     # Initialize the K4A camera
@@ -206,8 +318,8 @@ def main():
     capture = k4a.get_capture()
     img_color = capture.color
     img_color = cv2.imdecode(img_color, cv2.IMREAD_COLOR)
-    plt.imsave('calibration_images/calibration_8.jpg', img_color)
-    image_path = 'calibration_images/calibration_8.jpg'
+    plt.imsave('11_17_images/calibration_1.jpg', img_color)
+    image_path = '11_17_images/calibration_1.jpg'
     
     calibration = k4a.calibration
     camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
