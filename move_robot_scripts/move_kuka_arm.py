@@ -70,11 +70,11 @@ def reset_target(x, y, z, x_rot, y_rot, z_rot):
     
     # Convert the rotation matrix to a quaternion
     r = R.from_matrix(rotation_matrix)
-    rotation_30_deg = R.from_euler('x', -30, degrees=True)  # Rotate 30 degrees around the Z-axis
+    rotation_30_deg = R.from_euler('x',  xrot, degrees=True)  # Rotate 30 degrees around the Z-axis
     final_quaternion = rotation_30_deg * r
-    rotation_30_deg = R.from_euler('y', 5, degrees=True)  # Rotate 30 degrees around the Z-axis
+    rotation_30_deg = R.from_euler('y', yrot, degrees=True)  # Rotate 30 degrees around the Z-axis
     final_quaternion = rotation_30_deg * r  # Apply the rotation
-    rotation_180_deg = R.from_euler('z', 40, degrees=True)
+    rotation_180_deg = R.from_euler('z', zrot, degrees=True)
     final_quaternion = rotation_180_deg * final_quaternion
 
     # Set the quaternion (orientation)
@@ -243,20 +243,23 @@ if __name__ == '__main__':
             rospy.loginfo('Done.')  
 
             n_translations, n_rotations = 5,5
-            xy_values = [random.uniform(-0.2, 0.2) for i in range(n_translations)]
-            z_values = [random.uniform(0.8, 1.1) for i in range(n_translations)]
-            xyz_rot_values = [random.uniform(-30, 30) for i in range(n_rotations)]
+            x_values = [-0.2, 0.2]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+            y_values = [0,0.3] #sorted([random.uniform(0, 0.3) for i in range(n_translations)])
+            z_values = [0.9, 1.1]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])
+            xyz_rot_values = [-30, 30] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            #z_rot_values = #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
 
-            print(xy_values, z_values, xyz_rot_values)
+            
 
             k4a, tf_echo = initialize()
             
-            for x in xy_values:
+            for x in x_values:
                 for xrot in xyz_rot_values:
-                    for y in xy_values:
+                    for y in y_values:
                         for yrot in xyz_rot_values:
                             for z in z_values:
                                 for zrot in xyz_rot_values:
+                                    print(f"Now moving to: x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
                                     pose = group.get_current_pose().pose
                                     #x = 0.0
                                     #y = 0.0
@@ -277,12 +280,14 @@ if __name__ == '__main__':
                                     if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
                                         rospy.logwarn("Cartesian path planning failed.")
                                     else:
-                                        index = f"{x}_{y}_{z}_{xrot}_{yrot}_{zrot}"
+                                        index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
                                         get_parameters(index, k4a, tf_echo)
                                         group.execute(plan, wait=True)
                                         group.stop()
                                         print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
-                                        rospy.sleep(2)
+                                        input("PRESS NOW")
+        
+
             # pose_target = Pose()
 
             # # Set the target position (x, y, z)
