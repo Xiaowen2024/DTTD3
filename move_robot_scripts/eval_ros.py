@@ -29,48 +29,26 @@ if args.ik and args.ik_rl:
 
 RATE = 60
 
-# def reset_target():
-#     curr_target = np.array([0.,0.,0.,0.,0.,0.,0.])
-#     curr_target[0] = np.random.uniform(-0.2,0.2)
-#     curr_target[1] = np.random.uniform(-0.5,0.5)
-#     curr_target[2] = np.random.uniform(0.75,1.05)
-#     xr,yr,zr = np.random.uniform(-1,1,3)*0.5
-#     z_axis = np.array([1.,yr,zr])
-#     z_axis = z_axis/np.linalg.norm(z_axis)
-#     theta_z = np.arctan2(curr_target[2],curr_target[1])+xr*0.5
-#     x_axis = np.array([0.,np.cos(theta_z),np.sin(theta_z)])
-#     x_axis[0] = (-x_axis[1]*z_axis[1] - x_axis[2]*z_axis[2])/z_axis[0]
-#     x_axis = x_axis/np.linalg.norm(x_axis)
-
-#     y_axis = np.cross(z_axis,x_axis)
-#     Rot = np.array([x_axis,y_axis,z_axis]).T @ np.array([[0,0,1],[0,-1,0],[1,0,0]])
-#     r = R.from_matrix(Rot)
-#     q = r.as_quat()
-#     curr_target[3:7] = q
-#     return curr_target
-
-def reset_target(x, y, z):
+def reset_target():
     curr_target = np.array([0.,0.,0.,0.,0.,0.,0.])
-    curr_target[0] = x
-    curr_target[1] = y
-    curr_target[2] = z
-    target_point = np.array([0.0, 0.0, 1.0]) 
-    (trans, rot) = listener.lookupTransform('world', 'lbr_link_ee', rospy.Time(0))
-    current_position = np.array(trans)
-    direction_vector = target_point - current_position
-    direction_vector = direction_vector / np.linalg.norm(direction_vector)
-    z_axis = direction_vector
-    up_vector = np.array([0.0, 0.0, 1.0])
-    if np.allclose(z_axis, up_vector):
-        up_vector = np.array([0.0, 1.0, 0.0])  
-    x_axis = np.cross(up_vector, z_axis)
-    x_axis = x_axis / np.linalg.norm(x_axis)
-    y_axis = np.cross(z_axis, x_axis)
-    rotation_matrix = np.array([x_axis, y_axis, z_axis]).T
-    r = R.from_matrix(rotation_matrix)
-    quaternion = r.as_quat()
-    curr_target[3:7] = quaternion
+    curr_target[0] = np.random.uniform(-0.2,0.2)
+    curr_target[1] = np.random.uniform(-0.5,0.5)
+    curr_target[2] = np.random.uniform(0.75,1.05)
+    xr,yr,zr = np.random.uniform(-1,1,3)*0.5
+    z_axis = np.array([1.,yr,zr])
+    z_axis = z_axis/np.linalg.norm(z_axis)
+    theta_z = np.arctan2(curr_target[2],curr_target[1])+xr*0.5
+    x_axis = np.array([0.,np.cos(theta_z),np.sin(theta_z)])
+    x_axis[0] = (-x_axis[1]*z_axis[1] - x_axis[2]*z_axis[2])/z_axis[0]
+    x_axis = x_axis/np.linalg.norm(x_axis)
+
+    y_axis = np.cross(z_axis,x_axis)
+    Rot = np.array([x_axis,y_axis,z_axis]).T @ np.array([[0,0,1],[0,-1,0],[1,0,0]])
+    r = R.from_matrix(Rot)
+    q = r.as_quat()
+    curr_target[3:7] = q
     return curr_target
+
 
 # Callback function for the subscriber
 def joint_state_callback(data):

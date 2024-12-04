@@ -13,13 +13,13 @@ class CalibrateHandEye():
         # Load gripper2base rotations from JSON file
         with open(R_gripper2base_path, 'r') as f:
             data = json.load(f)
-            self.R_gripper2base = np.array(data['rotations'])#[:10,:,]
+            self.R_gripper2base = np.array(data['rotations'])[:117,:,]
             print(self.R_gripper2base.shape)
         
         # Load gripper2base translations from JSON file 
         with open(t_gripper2base_path, 'r') as f:
             data = json.load(f)
-            self.t_gripper2base = np.array(data['translations'])#[:10,:,]
+            self.t_gripper2base = np.array(data['translations'])[:117,:,]
             print(self.t_gripper2base.shape)
 
         # Load target2cam rotations from text file
@@ -27,14 +27,14 @@ class CalibrateHandEye():
     
         with open(R_target2cam_path, 'r') as f:
             data = json.load(f)
-            self.R_target2cam = np.array(data['rotations'])#[:10,:,]
+            self.R_target2cam = np.array(data['rotations'])[:117,:,]
             print(self.R_target2cam.shape)
     
 
         # Try loading translations from JSON first
         with open(t_target2cam_path, 'r') as f:
             data = json.load(f)
-            self.t_target2cam = np.array(data['translations'])#[:10,:,]
+            self.t_target2cam = np.array(data['translations'])[:117,:,]
             print(self.t_target2cam.shape)
        
 

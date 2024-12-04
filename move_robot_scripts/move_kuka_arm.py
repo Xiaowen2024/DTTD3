@@ -248,7 +248,7 @@ if __name__ == '__main__':
             z_values = [0.9, 1.2]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
             x_rot_values = [-30, -15,  0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
             y_rot_values = [-15, 0, 15]#-30
-            z_rot_values = [-5, 0, 5]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
+            z_rot_values = [-10, 0, 10]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
 
 
             # pose = group.get_current_pose().pose
