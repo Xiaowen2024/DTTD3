@@ -307,9 +307,10 @@ if __name__ == '__main__':
                                         index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
                                         group.execute(plan, wait=True)
                                         group.stop()
+                                        time.sleep(1)
                                         get_parameters(index, k4a, tf_echo)
                                         print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
-                                        time.sleep(0.5)
+                                        
                                         #inp = input("PRESS NOW")
                                         #if inp == 'q':
                                         #    close_camera(k4a)
