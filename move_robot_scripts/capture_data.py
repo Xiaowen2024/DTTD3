@@ -215,89 +215,89 @@ def pose_callback(msg: PoseStamped):
 if __name__ == '__main__':
     try:
         # Initialize the ROS node
-        rospy.init_node('kuka_joint_controller', anonymous=True)
-        env = KukaTennisEnv(proc_id=1)
-        obs, _ = env.reset()
-        # Initialize the TransformListener
-        listener = tf.TransformListener()
+        # rospy.init_node('kuka_joint_controller', anonymous=True)
+        # env = KukaTennisEnv(proc_id=1)
+        # obs, _ = env.reset()
+        # # Initialize the TransformListener
+        # listener = tf.TransformListener()
         
-        # Subscribe to the joint state topic
-        rospy.Subscriber('/lbr/PositionJointInterface_trajectory_controller/state', 
-                         JointTrajectoryControllerState, joint_state_callback)
+        # # Subscribe to the joint state topic
+        # rospy.Subscriber('/lbr/PositionJointInterface_trajectory_controller/state', 
+        #                  JointTrajectoryControllerState, joint_state_callback)
         
-        # Publisher for the joint command topic
-        trajectory_pub = rospy.Publisher('/lbr/PositionJointInterface_trajectory_controller/command', 
-                                         JointTrajectory)
+        # # Publisher for the joint command topic
+        # trajectory_pub = rospy.Publisher('/lbr/PositionJointInterface_trajectory_controller/command', 
+        #                                  JointTrajectory)
 
-        # Keep the node alive and processing callbacks
-        # Set the rate for publishing (10 Hz = 0.1 seconds)
-        rate = rospy.Rate(RATE)  
-        if args.ik :
-            name = 'arm'
-            group = moveit_commander.MoveGroupCommander(name)
-            group.set_max_velocity_scaling_factor(1.0)
-            # target = 'home'
-            # group.set_named_target(target)
-            # group.go()
-            # group.stop()
-            # rospy.loginfo('Done.')  
+        # # Keep the node alive and processing callbacks
+        # # Set the rate for publishing (10 Hz = 0.1 seconds)
+        # rate = rospy.Rate(RATE)  
+        # if args.ik :
+        #     name = 'arm'
+        #     group = moveit_commander.MoveGroupCommander(name)
+        #     group.set_max_velocity_scaling_factor(1.0)
+        #     # target = 'home'
+        #     # group.set_named_target(target)
+        #     # group.go()
+        #     # group.stop()
+        #     # rospy.loginfo('Done.')  
 
-            n_translations, n_rotations = 5,5
-            x_values = [-0.1, 0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
-            y_values = [0.0, ] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
-            z_values = [0.9]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
-            x_rot_values = [-30, -40] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
-            y_rot_values = [-10, 0, 10]#-30
-            z_rot_values = [-180]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
+        #     n_translations, n_rotations = 5,5
+        #     x_values = [-0.1, 0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+        #     y_values = [0.0, ] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
+        #     z_values = [0.9]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
+        #     x_rot_values = [-30, -40] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+        #     y_rot_values = [-10, 0, 10]#-30
+        #     z_rot_values = [-180]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
             
 
             k4a, tf_echo = initialize()
 
-            counter = 0
+            # counter = 0
             
-            for x in x_values:
-                for xrot in x_rot_values:
-                    for y in y_values:
-                        for yrot in y_rot_values:
-                            for z in z_values:
-                                for zrot in z_rot_values:
-                                    print(f"Now moving to: x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
+            # for x in x_values:
+            #     for xrot in x_rot_values:
+            #         for y in y_values:
+            #             for yrot in y_rot_values:
+            #                 for z in z_values:
+            #                     for zrot in z_rot_values:
+            #                         print(f"Now moving to: x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
                     
-                                    pose = group.get_current_pose().pose
-                                    new_target = reset_target(x, y, z, xrot, yrot, zrot)
-                                    waypoints = []
-                                    pose.position.x = new_target[0]
-                                    pose.position.y = new_target[1]
-                                    pose.position.z = new_target[2]
-                                    pose.orientation.x = new_target[3]
-                                    pose.orientation.y = new_target[4]
-                                    pose.orientation.z = new_target[5]
-                                    pose.orientation.w = new_target[6]
-                                    waypoints.append(copy.deepcopy(pose))
-                                    plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
+            #                         pose = group.get_current_pose().pose
+            #                         new_target = reset_target(x, y, z, xrot, yrot, zrot)
+            #                         waypoints = []
+            #                         pose.position.x = new_target[0]
+            #                         pose.position.y = new_target[1]
+            #                         pose.position.z = new_target[2]
+            #                         pose.orientation.x = new_target[3]
+            #                         pose.orientation.y = new_target[4]
+            #                         pose.orientation.z = new_target[5]
+            #                         pose.orientation.w = new_target[6]
+            #                         waypoints.append(copy.deepcopy(pose))
+            #                         plan, fraction = group.compute_cartesian_path(waypoints, eef_step=0.01)
 
-                                    if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
-                                        rospy.logwarn("Cartesian path planning failed.")
-                                    else:
-                                        # index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
-                                        index = str(counter)
-                                        group.execute(plan, wait=True)
-                                        group.stop()
-                                        time.sleep(2)
-                                        get_parameters(index, k4a, tf_echo)
-                                        counter += 1
-                                        print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
-                                        inp = input("PRESS NOW").strip().lower()
-                                        if inp == 'q':
-                                            close_camera(k4a)
-                                            sys.exit()
+            #                         if fraction < 0.9:  # Ensure at least 90% of the path is planned successfully
+            #                             rospy.logwarn("Cartesian path planning failed.")
+            #                         else:
+            #                             # index = f"x_{np.round(x, 3)}_y_{np.round(y, 3)}_z_{np.round(z, 3)}_xrot_{np.round(xrot, 3)}_yrot_{np.round(yrot, 3)}_zrot_{np.round(zrot,3)}"
+            #                             index = str(counter)
+            #                             group.execute(plan, wait=True)
+            #                             group.stop()
+            #                             time.sleep(2)
+            #                             get_parameters(index, k4a, tf_echo)
+            #                             counter += 1
+            #                             print(f"x: {x}, y: {y}, z: {z}, xrot: {xrot}, yrot: {yrot}, zrot: {zrot}")
+            #                             inp = input("PRESS NOW").strip().lower()
+            #                             if inp == 'q':
+            #                                 close_camera(k4a)
+            #                                 sys.exit()
                                      
                                     
-        else:
-                # Main loop to publish commands at 20 Hz
-                while not rospy.is_shutdown():
-                    publish_trajectory_command()
-                    rate.sleep()
+        # else:
+        #         # Main loop to publish commands at 20 Hz
+        #         while not rospy.is_shutdown():
+        #             publish_trajectory_command()
+        #             rate.sleep()
 
         
 

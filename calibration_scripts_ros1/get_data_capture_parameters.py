@@ -219,10 +219,13 @@ class TF2Echo:
         return R.from_quat([x, y, z, w]).as_matrix()
     
 def initialize():
-    # config = Config(depth_mode = DepthMode.NFOV_UNBINNED, synchronized_images_only = True)
-    k4a = PyK4A()
+    config = Config(color_resolution = ColorResolution.RES_2160P, depth_mode = DepthMode.WFOV_2X2BINNED)
+    k4a = PyK4A(config=config)
     k4a.start() 
-    tf2_echo = TF2Echo()
+    tf2_echo = 'TF2Echo()'
+    calibration = k4a.calibration
+    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
+    print(f"camera_matrix: {camera_matrix}")
     return k4a, tf2_echo
 
     
@@ -234,12 +237,12 @@ def get_parameters(index, k4a, tf2_echo):
     # k4a = PyK4A(config=config)
     # k4a.start()  
     capture = k4a.get_capture()
-    img_rgb = capture.color[:,:, :3]
+    img_bgr = capture.color[:,:, :3]
     img_d = capture.transformed_depth
-    img_rgb = np.ascontiguousarray(img_rgb)
+    img_bgr = np.ascontiguousarray(img_bgr)
     rgb_image_path = 'data_capture_images' + index + "_rgb.jpg"
     d_image_path = 'data_capture_images' + index + "_d.jpg"
-    cv2.imwrite(rgb_image_path, img_rgb) # bgra to rgb
+    cv2.imwrite(rgb_image_path, img_bgr) 
     cv2.imwrite(d_image_path, img_d)
     calibration = k4a.calibration
     # camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)

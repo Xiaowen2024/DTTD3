@@ -339,8 +339,7 @@ def get_parameters(index, k4a, tf2_echo):
     image_path = 'calibration_ready_images/calibration' + index + ".jpg"
     plt.imsave(image_path, img_color)
     calibration = k4a.calibration
-    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
-    # print(f"camera_matrix: {camera_matrix}")
+   
     dist_coeffs = CameraCalibration.get_color_dist_coefficients(calibration)
     # print(f"dist_coeffs: {dist_coeffs}")
     tf2_echo.listen_for_transform(False)
@@ -350,6 +349,10 @@ def get_parameters(index, k4a, tf2_echo):
         dist_coeffs,
         0.2047
     )
+ 
+
+
+
  
 
 def main():
