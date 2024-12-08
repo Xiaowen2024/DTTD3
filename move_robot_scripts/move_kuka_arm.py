@@ -242,13 +242,20 @@ if __name__ == '__main__':
             # group.stop()
             # rospy.loginfo('Done.')  
 
+            # n_translations, n_rotations = 5,5
+            # x_values = [-0.1, 0, 0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+            # y_values = [0.1] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
+            # z_values = [0.9, 1.2]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
+            # x_rot_values = [-30, -15,  0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            # y_rot_values = [-15, 0, 15]#-30
+            # z_rot_values = [-10, 0, 10]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
             n_translations, n_rotations = 5,5
-            x_values = [-0.1, 0, 0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
-            y_values = [0.1] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
-            z_values = [0.9, 1.2]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
-            x_rot_values = [-30, -15,  0] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
-            y_rot_values = [-15, 0, 15]#-30
-            z_rot_values = [-10, 0, 10]#sorted([random.uniform(-30, 30) for i in range(n_rotations)]), -30
+            x_values = [-0.1]#sorted([random.uniform(-0.2, 0.2) for i in range(n_translations)])
+            y_values = [0.2] #sorted([random.uniform(0, 0.3) for i in range(n_translations)]) # 0
+            z_values = [1.2]#sorted([random.uniform(0.9, 1.1) for i in range(n_translations)])# 0.9
+            x_rot_values = [-15] #sorted([random.uniform(-30, 30) for i in range(n_rotations)])
+            y_rot_values = [0]#-30
+            z_rot_values = [0]#sorted([r
 
 
             # pose = group.get_current_pose().pose
