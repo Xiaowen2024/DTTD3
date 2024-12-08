@@ -13,13 +13,13 @@ class CalibrateHandEye():
         # Load gripper2base rotations from JSON file
         with open(R_gripper2base_path, 'r') as f:
             data = json.load(f)
-            self.R_gripper2base = np.array(data['rotations'])[:117,:,]
+            self.R_gripper2base = np.array(data['rotations'])[:117, :]
             print(self.R_gripper2base.shape)
         
         # Load gripper2base translations from JSON file 
         with open(t_gripper2base_path, 'r') as f:
             data = json.load(f)
-            self.t_gripper2base = np.array(data['translations'])[:117,:,]
+            self.t_gripper2base = np.array(data['translations'])[:117, :]
             print(self.t_gripper2base.shape)
 
         # Load target2cam rotations from text file
@@ -27,14 +27,14 @@ class CalibrateHandEye():
     
         with open(R_target2cam_path, 'r') as f:
             data = json.load(f)
-            self.R_target2cam = np.array(data['rotations'])[:117,:,]
+            self.R_target2cam = np.array(data['rotations'])[:117, :]
             print(self.R_target2cam.shape)
     
 
         # Try loading translations from JSON first
         with open(t_target2cam_path, 'r') as f:
             data = json.load(f)
-            self.t_target2cam = np.array(data['translations'])[:117,:,]
+            self.t_target2cam = np.array(data['translations'])[:117, :]
             print(self.t_target2cam.shape)
        
 
@@ -64,7 +64,7 @@ def compute_residuals(R_cam2gripper, t_cam2gripper, R_gripper2base, t_gripper2ba
 
 
 def main():
-    calibrateHandEye = CalibrateHandEye('../move_robot_scripts/calibration_ready_parameters/calibration_gripper2base_rotations.json', '../move_robot_scripts/calibration_ready_parameters/calibration_gripper2base_translations.json', '../move_robot_scripts/calibration_ready_parameters/calibration_target2cam_rotations.json', '../move_robot_scripts/calibration_ready_parameters/calibration_target2cam_translations.json')
+    calibrateHandEye = CalibrateHandEye('../move_robot_scripts/calibration_ready_parameters/processed/processed_gripper2base_rotations.json', '../move_robot_scripts/calibration_ready_parameters/processed/processed_gripper2base_translations.json', '../move_robot_scripts/calibration_ready_parameters/processed/processed_target2cam_rotations.json', '../move_robot_scripts/calibration_ready_parameters/processed/processed_target2cam_translations.json')
     R_cam2gripper, t_cam2gripper = calibrateHandEye.calibrate_hand_eye()
     print(f"R_cam2gripper: {R_cam2gripper}")
     print(f"t_cam2gripper: {t_cam2gripper}")

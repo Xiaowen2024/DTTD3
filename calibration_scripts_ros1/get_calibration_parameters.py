@@ -5,7 +5,7 @@ import rospy
 import tf
 from tf2_ros import Buffer, TransformListener
 from geometry_msgs.msg import TransformStamped
-from pyk4a import PyK4A, Config, ImageFormat, DepthMode
+from pyk4a import PyK4A, Config, ImageFormat, DepthMode, ColorResolution
 import cv2
 import matplotlib.pyplot as plt
 import time
@@ -76,7 +76,7 @@ class CameraCalibration:
             # Load and update rotations
             # Handle rotations
             try:
-                with open('calibration_ready_parameters/calibration_target2cam_rotations.json', 'r') as f:
+                with open('calibration_ready_parameters/extra_target2cam_rotations.json', 'r') as f:
                     data = json.load(f)
                     rotations = np.array(data['rotations'])
                     # Add new rotation
@@ -87,14 +87,14 @@ class CameraCalibration:
                 rotations = R_target2cam.reshape(1, 3, 3)
 
             # Save updated rotations
-            with open('calibration_ready_parameters/calibration_target2cam_rotations.json', 'w') as f:
+            with open('calibration_ready_parameters/extra_target2cam_rotations.json', 'w') as f:
                 json.dump({
                     'rotations': rotations.tolist()
                 }, f, indent=2)
 
             # Handle translations
             try:
-                with open('calibration_ready_parameters/calibration_target2cam_translations.json', 'r') as f:
+                with open('calibration_ready_parameters/extra_target2cam_translations.json', 'r') as f:
                     data = json.load(f)
                     translations = np.array(data['translations'])
                     # Add new translation
@@ -105,12 +105,36 @@ class CameraCalibration:
                 translations = tvec.reshape(1, 3)
 
             # Save updated translations
-            with open('calibration_ready_parameters/calibration_target2cam_translations.json', 'w') as f:
+            with open('calibration_ready_parameters/extra_target2cam_translations.json', 'w') as f:
                 json.dump({
                     'translations': translations.tolist()
                 }, f, indent=2)
 
             return R_target2cam, tvec
+        
+    def return_target_camera_transform(image_path, camera_matrix, dist_coeffs, marker_length):
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+        parameters = cv2.aruco.DetectorParameters()
+        frame = cv2.imread(image_path)
+        detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Detect ArUco markers in the image
+        corners, ids, _ = detector.detectMarkers(frame)
+
+    
+        if ids is not None:
+            # Draw detected markers for visualization
+            frame_markers = cv2.aruco.drawDetectedMarkers(frame.copy(), corners, ids)
+            # retval, rvec, tvec = cv2.aruco.estimatePoseSingleMarkers(corners, marker_length,  camera_matrix, dist_coeffs)
+            # Estimate pose of each marker
+            rvecs, tvecs = CameraCalibration.estimate_pose_single_markers(corners, camera_matrix, dist_coeffs, marker_length)
+            tvec = tvecs[0]
+            rvec = rvecs[0]
+            R_target2cam, _ = cv2.Rodrigues(rvec)
+            print(f"R_target2Cam: {R_target2cam}")
+            print(f"T_target2Cam: {tvec}") 
+            return R_target2cam, tvec
+        
 
 class TF2Echo:
     def __init__(self):
@@ -151,6 +175,32 @@ class TF2Echo:
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                 rospy.logerr(f'Could not get transform: {str(e)}')
             time.sleep(0.1)  # Wait briefly before trying again
+
+    def return_transform(self, transform_saved = False):
+        while not rospy.is_shutdown() and not transform_saved:
+            try:
+                # Lookup the transform from source_frame to target_frame
+                transform = self.tf_buffer.lookup_transform(self.target_frame, self.source_frame, rospy.Time(0))
+                
+                self.translation = np.array([
+                    transform.transform.translation.x,
+                    transform.transform.translation.y,
+                    transform.transform.translation.z
+                ])
+                self.rotation = self.quaternion_to_rotation_matrix(
+                    transform.transform.rotation.x,
+                    transform.transform.rotation.y,
+                    transform.transform.rotation.z,
+                    transform.transform.rotation.w
+                )
+                print(f"rotation: {self.rotation}")
+                print(f"translation: {self.translation}")
+                transform_saved = True;
+                return self.rotation, self.translation
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+                rospy.logerr(f'Could not get transform: {str(e)}')
+            time.sleep(0.1)  # Wait briefly before trying again
+
 
     def save_transform(self, transform):
         try:
@@ -210,7 +260,7 @@ class TF2Echo:
             #     }, f, indent=2)
 
             try:
-                with open('calibration_ready_parameters/calibration_gripper2base_rotations.json', 'r') as f:
+                with open('calibration_ready_parameters/extra_gripper2base_rotations.json', 'r') as f:
                     data = json.load(f)
                     rotations = np.array(data['rotations'])
                     # Add new rotation
@@ -221,14 +271,14 @@ class TF2Echo:
                 rotations = rotation.reshape(1, 3, 3)
 
             # Save updated rotations
-            with open('calibration_ready_parameters/calibration_gripper2base_rotations.json', 'w') as f:
+            with open('calibration_ready_parameters/extra_gripper2base_rotations.json', 'w') as f:
                 json.dump({
                     'rotations': rotations.tolist()
                 }, f, indent=2)
 
             # Handle translations
             try:
-                with open('calibration_ready_parameters/calibration_gripper2base_translations.json', 'r') as f:
+                with open('calibration_ready_parameters/extra_gripper2base_translations.json', 'r') as f:
                     data = json.load(f)
                     translations = np.array(data['translations'])
                     # Add new translation
@@ -239,7 +289,7 @@ class TF2Echo:
                 translations = translation.reshape(1, 3)
 
             # Save updated translations
-            with open('calibration_ready_parameters/calibration_gripper2base_translations.json', 'w') as f:
+            with open('calibration_ready_parameters/extra_gripper2base_translations.json', 'w') as f:
                 json.dump({
                     'translations': translations.tolist()
                 }, f, indent=2)
@@ -319,10 +369,13 @@ class TF2Echo:
         return R.from_quat([x, y, z, w]).as_matrix()
     
 def initialize():
-    config = Config(color_format=ImageFormat.COLOR_MJPG, depth_mode = DepthMode.OFF, synchronized_images_only = False)
+    config = Config(color_resolution = ColorResolution.RES_2160P, depth_mode = DepthMode.OFF, synchronized_images_only = False)
     k4a = PyK4A(config=config)
     k4a.start() 
     tf2_echo = TF2Echo()
+    calibration = k4a.calibration
+    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
+    print(f"camera_matrix: {camera_matrix}")
     return k4a, tf2_echo
 
     
@@ -334,26 +387,39 @@ def get_parameters(index, k4a, tf2_echo):
     # k4a = PyK4A(config=config)
     # k4a.start()  
     capture = k4a.get_capture()
-    img_color = capture.color
-    img_color = cv2.imdecode(img_color, cv2.IMREAD_COLOR)
-    image_path = 'calibration_ready_images/calibration' + index + ".jpg"
-    plt.imsave(image_path, img_color)
+    img_bgr = capture.color[:,:, :3]
+    img_bgr = np.ascontiguousarray(img_bgr)
+    rgb_image_path = 'calibration_ready_images/calibration' + index + ".jpg"
+    cv2.imwrite(rgb_image_path, img_bgr) 
     calibration = k4a.calibration
-   
     dist_coeffs = CameraCalibration.get_color_dist_coefficients(calibration)
+    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
     # print(f"dist_coeffs: {dist_coeffs}")
     tf2_echo.listen_for_transform(False)
     CameraCalibration.get_target_camera_transform(
-        image_path,
+        rgb_image_path,
         camera_matrix,
         dist_coeffs,
         0.2047
     )
  
-
-
-
- 
+def return_parameters(k4a, tf2_echo):
+    capture = k4a.get_capture()
+    img_bgr = capture.color[:,:, :3]
+    img_bgr = np.ascontiguousarray(img_bgr)
+    rgb_image_path = "test_calibration.jpg"
+    cv2.imwrite(rgb_image_path, img_bgr) 
+    calibration = k4a.calibration
+    dist_coeffs = CameraCalibration.get_color_dist_coefficients(calibration)
+    camera_matrix = CameraCalibration.get_color_camera_matrix(calibration)
+    r_gripper2base, t_gripper2base = tf2_echo.return_transform()
+    r_target2cam, t_target2cam = CameraCalibration.return_target_camera_transform(
+        rgb_image_path,
+        camera_matrix,
+        dist_coeffs,
+        0.2047
+    )
+    return r_gripper2base, t_gripper2base, r_target2cam, t_gripper2base
 
 def main():
     # Initialize the K4A camera
