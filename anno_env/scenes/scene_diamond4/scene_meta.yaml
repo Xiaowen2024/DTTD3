@@ -1,0 +1,6 @@
+cam_scale: 0.001
+camera: real_sense
+num_frames: 1000
+objects:
+- 21
+- 29
